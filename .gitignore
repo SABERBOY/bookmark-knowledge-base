@@ -37,3 +37,6 @@ credentials*
 # local scratch
 tmp/
 .cache/
+
+public/hifi/
+**/hifi/*.html

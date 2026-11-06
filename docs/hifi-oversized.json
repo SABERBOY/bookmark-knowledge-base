@@ -1,0 +1,46 @@
+{
+  "limit_bytes": 26214400,
+  "included": 141,
+  "excluded_oversized": 6,
+  "included_bytes": 341582359,
+  "included_mib": 325.76,
+  "oversized": [
+    {
+      "id": 53,
+      "file": "53.html",
+      "bytes": 105621650,
+      "mib": 100.73
+    },
+    {
+      "id": 68,
+      "file": "68.html",
+      "bytes": 156630407,
+      "mib": 149.37
+    },
+    {
+      "id": 100,
+      "file": "100.html",
+      "bytes": 99564919,
+      "mib": 94.95
+    },
+    {
+      "id": 108,
+      "file": "108.html",
+      "bytes": 77391934,
+      "mib": 73.81
+    },
+    {
+      "id": 125,
+      "file": "125.html",
+      "bytes": 28904776,
+      "mib": 27.57
+    },
+    {
+      "id": 149,
+      "file": "149.html",
+      "bytes": 56226863,
+      "mib": 53.62
+    }
+  ],
+  "ids_out": "/workspace/bookmark-site/preview/hifi-ids.json"
+}

@@ -84,3 +84,19 @@ npx wrangler deploy
 ## License
 
 个人书签归档；第三方页面版权归原站点所有。抓取正文仅供私人检索与阅读备份。
+
+
+## 高保真 HTML（本地 / 部署快照）
+
+SingleFile 抓取产物默认**不进 Git**（体积大，且有文件超过 Workers 单文件 25 MiB 上限）。
+
+```bash
+# 从 content_html 生成可部署 id 列表，并复制 ≤25MiB 的 HTML 到 public/hifi/
+python3 tools/build_hifi_ids.py \
+  --html-dir /path/to/content_html \
+  --out public/hifi-ids.json \
+  --report docs/hifi-oversized.json \
+  --copy-to public/hifi
+```
+
+超过 25 MiB 的页面不会复制，详情页回退 Markdown。抓取仍在进行时可随时重跑脚本再 `npx wrangler deploy`。

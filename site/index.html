@@ -290,6 +290,29 @@
     margin: .8rem 0; padding: .2rem 0 .2rem .9rem;
     border-left: 3px solid var(--accent); color: var(--muted);
   }
+  .view-tabs {
+    display: flex; flex-wrap: wrap; gap: .35rem; margin: 0 0 .85rem;
+  }
+  .view-tab {
+    border: 1px solid var(--border); background: var(--panel);
+    border-radius: 999px; padding: .3rem .75rem; font-size: .8rem;
+    cursor: pointer; color: var(--muted);
+  }
+  .view-tab.active {
+    background: var(--pill-active); color: var(--pill-active-text);
+    border-color: transparent;
+  }
+  .hifi-frame-wrap {
+    border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden; background: #fff; min-height: 60vh;
+  }
+  html.dark .hifi-frame-wrap { background: #111; }
+  .hifi-frame-wrap iframe {
+    width: 100%; height: min(70vh, 720px); border: 0; display: block; background: #fff;
+  }
+  .card-meta .tag.hifi-badge {
+    background: rgba(15,118,110,.12); color: var(--accent2);
+  }
   .footer {
     padding: 1.5rem 0 2.5rem; color: var(--faint); font-size: .8rem; text-align: center;
   }
@@ -353,6 +376,7 @@
           <option value="error">error</option>
           <option value="skip">skip</option>
         </select>
+        <button class="pill" type="button" id="hifiOnlyBtn">仅高保真<span class="n" id="hifiOnlyCount"></span></button>
         <button class="pill" type="button" id="clearFilters">清除筛选</button>
         <div class="result-meta" id="resultMeta"></div>
       </div>
@@ -364,7 +388,7 @@
   <div class="wrap" style="text-align:center;padding-bottom:1rem">
     <button class="load-more" id="loadMore" type="button" hidden>加载更多</button>
   </div>
-  <footer class="footer wrap">书签花园 · site/ 预览版（正式部署目录仍为 public/）</footer>
+  <footer class="footer wrap">书签花园 · site/ 预览（高保真 HTML 需本地 public/hifi，不入库）</footer>
 
   <div class="scrim" id="scrim" hidden></div>
   <aside class="drawer" id="drawer" aria-hidden="true">
@@ -389,6 +413,7 @@
   let activeId = null;
   let cat1 = '';
   let cat2 = '';
+  let hifiOnly = false;
   let rendered = 0;
   let filteredCache = [];
   let searchTimer = null;
@@ -474,6 +499,7 @@
     const q = $('q').value.trim().toLowerCase();
     const st = $('status').value;
     return pages.filter(p => {
+      if (hifiOnly && !hifiIds.has(p.id)) return false;
       if (cat1 && (p.cat1 || '其他') !== cat1) return false;
       if (cat2 && p.cat2 !== cat2) return false;
       if (st && p.fetch_status !== st) return false;
@@ -573,7 +599,7 @@
           <span class="st ${esc(p.fetch_status)}">${esc(p.fetch_status || '?')}</span>
           <span>${esc(p.domain || '')}</span>
           <span>#${p.id}</span>
-          ${hifiIds.has(p.id) ? '<span class="tag">Hi-Fi</span>' : ''}
+          ${hifiIds.has(p.id) ? '<span class="tag hifi-badge">高保真</span>' : ''}
         </div>
         <p class="card-sum">${sum}</p>
       </article>`;
@@ -673,30 +699,60 @@
     const mdRel = p.md_path || (`content/${id}.md`);
     const mdPath = base + mdRel;
     const hasHifi = hifiIds.has(id);
-    const hifiHref = base ? `${base}hifi/${id}.html` : `hifi/${id}.html`;
+    const hifiSrc = `${base}hifi/${id}.html`;
     const links = [
       `<a class="mini" href="${esc(p.url)}" target="_blank" rel="noopener">原站 ↗</a>`,
       `<a class="mini" href="${esc(mdPath)}" target="_blank" rel="noopener">打开 MD</a>`,
     ];
-    if (hasHifi) links.push(`<a class="mini" href="${esc(hifiHref)}" target="_blank" rel="noopener">高保真 HTML</a>`);
+    if (hasHifi) links.push(`<a class="mini" href="${esc(hifiSrc)}" target="_blank" rel="noopener">高保真 HTML</a>`);
     $('drawerLinks').innerHTML = links.join('');
     $('drawerMeta').innerHTML = `
       <div class="url"><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url)}</a></div>
       <div style="margin-top:.35rem">${esc(p.cat1 || '')} / ${esc(p.cat2 || '')} ·
         <span class="st ${esc(p.fetch_status)}">${esc(p.fetch_status || '')}</span> ·
         ${p.chars || 0} chars · #${p.id}
-        ${hasHifi ? ' · Hi-Fi 可用' : ''}
+        ${hasHifi ? ' · <span class="tag hifi-badge">高保真</span>' : ''}
       </div>
       ${p.summary ? `<p style="margin:.7rem 0 0;color:var(--muted)">${esc(p.summary)}</p>` : ''}
     `;
-    $('md-view').innerHTML = '<p style="color:var(--muted)">加载正文…</p>';
+
+    const tabs = hasHifi
+      ? `<div class="view-tabs" role="tablist">
+           <button type="button" class="view-tab active" data-view="hifi">高保真预览</button>
+           <button type="button" class="view-tab" data-view="md">Markdown</button>
+         </div>`
+      : `<div class="view-tabs" role="tablist">
+           <button type="button" class="view-tab active" data-view="md">Markdown</button>
+         </div>`;
+
+    $('md-view').innerHTML = tabs + `
+      <div id="view-hifi" class="hifi-frame-wrap" style="${hasHifi ? '' : 'display:none'}">
+        ${hasHifi ? `<iframe title="hi-fi" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+          loading="lazy" src="${hifiSrc}"></iframe>` : ''}
+      </div>
+      <div id="view-md" style="${hasHifi ? 'display:none' : ''}"><p style="color:var(--muted)">加载正文…</p></div>`;
+
+    $('md-view').querySelectorAll('.view-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $('md-view').querySelectorAll('.view-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const v = btn.dataset.view;
+        const hf = $('md-view').querySelector('#view-hifi');
+        const md = $('md-view').querySelector('#view-md');
+        if (hf) hf.style.display = v === 'hifi' ? '' : 'none';
+        if (md) md.style.display = v === 'md' ? '' : 'none';
+      });
+    });
+
     try {
       const res = await fetch(mdPath);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const text = stripFrontMatter(await res.text());
-      $('md-view').innerHTML = mdToHtml(text);
+      const mdBox = $('md-view').querySelector('#view-md');
+      if (mdBox) mdBox.innerHTML = mdToHtml(text);
     } catch (e) {
-      $('md-view').innerHTML = `<div class="empty">无法加载正文：${esc(e.message)}<br/>可先看上方摘要，或打开原站 / MD 链接。</div>`;
+      const mdBox = $('md-view').querySelector('#view-md');
+      if (mdBox) mdBox.innerHTML = `<div class="empty">无法加载正文：${esc(e.message)}<br/>可先看上方摘要，或切换高保真 / 打开原站。</div>`;
     }
   }
 
@@ -704,29 +760,23 @@
     initTheme();
     async function fetchFirst(urls) {
       for (const u of urls) {
-        try {
-          const r = await fetch(u);
-          if (r.ok) return r;
-        } catch (_) {}
+        try { const r = await fetch(u); if (r.ok) return r; } catch (_) {}
       }
       return null;
     }
-    const pagesRes = await fetchFirst([
-      'pages.json', 'data/pages.json',
-      '../public/pages.json', '../public/data/pages.json'
-    ]);
+    const pagesRes = await fetchFirst(['pages.json','data/pages.json','../public/pages.json','../public/data/pages.json']);
     if (!pagesRes) throw new Error('pages.json not found');
     pages = await pagesRes.json();
     try {
-      const hr = await fetchFirst(['hifi-ids.json', '../public/hifi-ids.json']);
+      const hr = await fetchFirst(['hifi-ids.json','../public/hifi-ids.json']);
       if (hr) hifiIds = new Set(await hr.json());
     } catch (_) {}
-    let contentBase = '';
     {
       const local = await fetchFirst(['content/1.md']);
-      contentBase = local ? '' : '../public/';
+      window.__contentBase = local ? '' : '../public/';
     }
-    window.__contentBase = contentBase;
+    const hoc = $('hifiOnlyCount');
+    if (hoc) hoc.textContent = hifiIds.size;
 
     // URL bootstrap: ?q=&cat1=&cat2=&status=&id=&dark=1
     try {
@@ -736,6 +786,7 @@
       if (sp.get('cat2')) cat2 = sp.get('cat2');
       if (sp.get('status')) $('status').value = sp.get('status');
       if (sp.get('dark') === '1') applyTheme(true);
+      if (sp.get('hifi') === '1') { hifiOnly = true; const b=$('hifiOnlyBtn'); if (b) b.classList.add('active'); }
     } catch (_) {}
 
     renderHero();
@@ -761,10 +812,16 @@
       searchTimer = setTimeout(() => refreshStream(true), 180);
     });
     $('status').addEventListener('change', () => refreshStream(true));
+    $('hifiOnlyBtn').addEventListener('click', () => {
+      hifiOnly = !hifiOnly;
+      $('hifiOnlyBtn').classList.toggle('active', hifiOnly);
+      refreshStream(true);
+    });
     $('clearFilters').addEventListener('click', () => {
-      cat1 = ''; cat2 = '';
+      cat1 = ''; cat2 = ''; hifiOnly = false;
       $('q').value = '';
       $('status').value = '';
+      $('hifiOnlyBtn').classList.remove('active');
       refreshAll();
     });
     $('loadMore').addEventListener('click', appendMore);
