@@ -1,0 +1,9 @@
+{
+  "name": "bookmark-knowledge-base",
+  "compatibility_date": "2026-11-06",
+  "account_id": "85f21d71356f8dc9a4ec09acdd854b3d",
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "single-page-application"
+  }
+}

@@ -1,0 +1,39 @@
+# dependencies / build
+node_modules/
+.wrangler/
+dist/
+.DS_Store
+
+# secrets & env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*
+*secret*
+*cookie*
+
+# local auth / caches
+.cloudflare/
+.mf/
+
+# large / generated hi-fi artifacts (not in this repo)
+**/content_html/
+**/hifi/
+**/*.single.html
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+**/*.zip
+**/*.tar
+**/*.tar.gz
+**/*.log
+**/fetch_*.log
+**/orchestrator.log
+**/__pycache__/
+*.pid
+
+# local scratch
+tmp/
+.cache/

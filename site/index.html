@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bender 的书签花园 · Bookmark Garden</title>
+<style>
+  :root {
+    --bg: #f7f4ef;
+    --bg2: #fffdf9;
+    --panel: #ffffff;
+    --text: #1c1917;
+    --muted: #78716c;
+    --faint: #a8a29e;
+    --border: #e7e0d5;
+    --accent: #c0265e;
+    --accent-soft: rgba(192, 38, 94, 0.1);
+    --accent2: #0f766e;
+    --shadow: 0 1px 2px rgba(28,25,23,.04), 0 8px 24px rgba(28,25,23,.06);
+    --plot: #f3eee6;
+    --plot-hover: #efe7db;
+    --pill: #ebe4d8;
+    --pill-active: #1c1917;
+    --pill-active-text: #fafaf9;
+    --ok: #15803d;
+    --proxy: #a16207;
+    --err: #b91c1c;
+    --skip: #57534e;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Songti SC", "Noto Serif SC", "Source Han Serif SC", Georgia, serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Noto Sans SC", "Helvetica Neue", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --radius: 14px;
+    --drawer-w: min(560px, 100vw);
+  }
+  html.dark {
+    --bg: #141210;
+    --bg2: #1a1714;
+    --panel: #1f1b18;
+    --text: #f5f0e8;
+    --muted: #a8a29e;
+    --faint: #78716c;
+    --border: #3f3a34;
+    --accent: #fb7185;
+    --accent-soft: rgba(251, 113, 133, 0.14);
+    --accent2: #2dd4bf;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 12px 32px rgba(0,0,0,.35);
+    --plot: #241f1a;
+    --plot-hover: #2c261f;
+    --pill: #2c261f;
+    --pill-active: #f5f0e8;
+    --pill-active-text: #1c1917;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    min-height: 100vh;
+  }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:hover { opacity: .9; }
+  button, input, select { font: inherit; color: inherit; }
+  .wrap { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; }
+
+  /* top bar */
+  .topbar {
+    position: sticky; top: 0; z-index: 40;
+    backdrop-filter: blur(10px);
+    background: color-mix(in srgb, var(--bg) 85%, transparent);
+    border-bottom: 1px solid transparent;
+    transition: border-color .2s;
+  }
+  .topbar.scrolled { border-bottom-color: var(--border); }
+  .topbar-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: .75rem; padding: .7rem 0;
+  }
+  .brand {
+    display: flex; align-items: center; gap: .55rem;
+    font-weight: 650; letter-spacing: -.01em; text-decoration: none; color: var(--text);
+  }
+  .brand-mark {
+    width: 1.55rem; height: 1.55rem; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), #7c3aed);
+    display: grid; place-items: center; color: #fff; font-size: .85rem;
+  }
+  .top-actions { display: flex; gap: .4rem; align-items: center; }
+  .icon-btn {
+    border: 1px solid var(--border); background: var(--panel);
+    border-radius: 999px; padding: .4rem .7rem; cursor: pointer;
+    color: var(--muted); box-shadow: var(--shadow);
+  }
+  .icon-btn:hover { color: var(--text); }
+
+  /* hero */
+  .hero { padding: 2.6rem 0 1.6rem; }
+  .hero-kicker {
+    color: var(--accent); font-size: .82rem; font-weight: 650;
+    letter-spacing: .08em; text-transform: uppercase; margin-bottom: .85rem;
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-size: clamp(2rem, 5vw, 3.35rem);
+    line-height: 1.15; font-weight: 700; margin: 0 0 .9rem;
+    letter-spacing: -.02em; max-width: 18ch;
+  }
+  .hero h1 .en {
+    display: block; font-size: .42em; font-weight: 550;
+    color: var(--muted); margin-top: .45rem; letter-spacing: 0;
+    font-family: var(--sans);
+  }
+  .hero-lead {
+    max-width: 42rem; color: var(--muted); font-size: 1.05rem; margin: 0 0 1.35rem;
+  }
+  .hero-lead strong { color: var(--text); font-weight: 650; }
+  .counts {
+    display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.4rem;
+  }
+  .count-chip {
+    font-size: .8rem; padding: .28rem .7rem; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  .count-chip b { font-weight: 700; }
+  .search-shell {
+    display: flex; gap: .55rem; align-items: stretch;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: .45rem .5rem .45rem .9rem;
+    box-shadow: var(--shadow); max-width: 640px;
+  }
+  .search-shell input {
+    flex: 1; border: 0; outline: 0; background: transparent;
+    font-size: 1rem; padding: .55rem 0; min-width: 0;
+  }
+  .search-shell button {
+    border: 0; border-radius: 12px; padding: .55rem 1rem;
+    background: var(--text); color: var(--bg); cursor: pointer; font-weight: 600;
+  }
+  html.dark .search-shell button { background: var(--accent); color: #1c1917; }
+
+  /* garden plots */
+  .section { padding: 1.25rem 0 0.5rem; }
+  .section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 1rem; margin-bottom: .9rem;
+  }
+  .section-head h2 {
+    font-family: var(--serif); font-size: 1.55rem; margin: 0; font-weight: 700;
+  }
+  .section-head p { margin: 0; color: var(--muted); font-size: .9rem; }
+  .plots {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: .75rem;
+  }
+  .plot {
+    background: var(--plot); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1rem 1.05rem;
+    cursor: pointer; text-align: left; transition: background .15s, transform .15s;
+    min-height: 148px; display: flex; flex-direction: column; gap: .45rem;
+  }
+  .plot:hover, .plot.active { background: var(--plot-hover); transform: translateY(-1px); }
+  .plot.active { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .plot-top { display: flex; justify-content: space-between; align-items: start; gap: .5rem; }
+  .plot-name { font-weight: 700; font-size: 1.02rem; letter-spacing: -.01em; }
+  .badge {
+    font-size: .72rem; font-weight: 700; padding: .15rem .45rem;
+    border-radius: 999px; background: var(--panel); border: 1px solid var(--border); color: var(--muted);
+    white-space: nowrap;
+  }
+  .plot-samples { margin: 0; padding-left: 1rem; color: var(--muted); font-size: .8rem; }
+  .plot-samples li { margin: .15rem 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* sticky browse bar */
+  .browse-bar {
+    position: sticky; top: 52px; z-index: 30;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(10px);
+    padding: .75rem 0 .55rem; margin-top: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .pills {
+    display: flex; flex-wrap: wrap; gap: .4rem; align-items: center;
+  }
+  .pill {
+    border: 1px solid var(--border); background: var(--pill);
+    border-radius: 999px; padding: .32rem .7rem; font-size: .82rem;
+    cursor: pointer; color: var(--text);
+  }
+  .pill:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  .pill.active {
+    background: var(--pill-active); color: var(--pill-active-text); border-color: transparent;
+  }
+  .pill .n { opacity: .65; margin-left: .2rem; font-size: .75em; }
+  .filters-row {
+    display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .55rem;
+  }
+  .filters-row select {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: .4rem .6rem; font-size: .85rem;
+  }
+  .result-meta { color: var(--muted); font-size: .85rem; margin-left: auto; }
+
+  /* stream cards */
+  .stream {
+    display: grid; gap: .7rem;
+    padding: 1rem 0 3rem;
+  }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1rem 1.1rem; cursor: pointer;
+    box-shadow: var(--shadow); transition: border-color .15s, transform .15s;
+  }
+  .card:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); transform: translateY(-1px); }
+  .card.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .card-title { font-weight: 700; font-size: 1.02rem; letter-spacing: -.01em; margin: 0 0 .35rem; }
+  .card-meta {
+    display: flex; flex-wrap: wrap; gap: .4rem; align-items: center;
+    color: var(--muted); font-size: .78rem; margin-bottom: .45rem;
+  }
+  .tag {
+    display: inline-flex; align-items: center; gap: .2rem;
+    padding: .1rem .45rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+    font-weight: 600;
+  }
+  .st {
+    padding: .08rem .4rem; border-radius: 6px; font-weight: 650; font-size: .72rem;
+  }
+  .st.ok { background: rgba(21,128,61,.12); color: var(--ok); }
+  .st.proxy_fallback { background: rgba(161,98,7,.12); color: var(--proxy); }
+  .st.error { background: rgba(185,28,28,.12); color: var(--err); }
+  .st.skip { background: rgba(87,83,78,.12); color: var(--skip); }
+  .card-sum {
+    margin: 0; color: var(--muted); font-size: .9rem;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .empty {
+    text-align: center; color: var(--muted); padding: 2.5rem 1rem;
+    border: 1px dashed var(--border); border-radius: var(--radius);
+  }
+  .sentinel { height: 1px; }
+  .load-more {
+    display: block; margin: .5rem auto 0; border: 1px solid var(--border);
+    background: var(--panel); border-radius: 999px; padding: .55rem 1.2rem; cursor: pointer;
+  }
+
+  /* Andy-style drawer */
+  .scrim {
+    position: fixed; inset: 0; background: rgba(28,25,23,.35);
+    opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 50;
+  }
+  .scrim.on { opacity: 1; pointer-events: auto; }
+  html.dark .scrim { background: rgba(0,0,0,.55); }
+  .drawer {
+    position: fixed; top: 0; right: 0; height: 100%; width: var(--drawer-w);
+    background: var(--bg2); border-left: 1px solid var(--border);
+    transform: translateX(105%); transition: transform .28s cubic-bezier(.2,.8,.2,1);
+    z-index: 60; display: flex; flex-direction: column; box-shadow: -12px 0 40px rgba(0,0,0,.12);
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head {
+    display: flex; gap: .6rem; align-items: start; justify-content: space-between;
+    padding: 1rem 1.1rem; border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  .drawer-head h3 {
+    margin: 0; font-family: var(--serif); font-size: 1.25rem; line-height: 1.25;
+  }
+  .drawer-actions { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .mini {
+    border: 1px solid var(--border); background: var(--bg);
+    border-radius: 999px; padding: .28rem .65rem; font-size: .78rem;
+    cursor: pointer; text-decoration: none; color: var(--text); display: inline-flex;
+  }
+  .drawer-body { overflow: auto; padding: 1rem 1.15rem 2rem; flex: 1; }
+  .drawer-meta { color: var(--muted); font-size: .85rem; margin-bottom: 1rem; }
+  .drawer-meta .url { word-break: break-all; }
+  #md-view { max-width: 52rem; }
+  #md-view h1,#md-view h2,#md-view h3 { font-family: var(--serif); line-height: 1.25; }
+  #md-view pre {
+    background: var(--plot); padding: .8rem; overflow: auto; border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  #md-view code { font-family: var(--mono); font-size: .88em; }
+  #md-view p { margin: .65rem 0; }
+  #md-view img { max-width: 100%; height: auto; border-radius: 8px; }
+  #md-view blockquote {
+    margin: .8rem 0; padding: .2rem 0 .2rem .9rem;
+    border-left: 3px solid var(--accent); color: var(--muted);
+  }
+  .footer {
+    padding: 1.5rem 0 2.5rem; color: var(--faint); font-size: .8rem; text-align: center;
+  }
+
+  @media (max-width: 720px) {
+    .hero { padding-top: 1.5rem; }
+    .hero h1 { max-width: none; }
+    .browse-bar { top: 48px; }
+    .result-meta { margin-left: 0; width: 100%; }
+    .drawer { width: 100%; }
+  }
+</style>
+</head>
+<body>
+  <div class="topbar" id="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="#top" id="brand">
+        <span class="brand-mark" aria-hidden="true">🌱</span>
+        <span>书签花园</span>
+      </a>
+      <div class="top-actions">
+        <button class="icon-btn" id="themeBtn" type="button" title="切换深浅色">☾ 深色</button>
+      </div>
+    </div>
+  </div>
+
+  <header class="hero wrap" id="top">
+    <div class="hero-kicker">Digital Garden · Personal Library</div>
+    <h1>
+      Bender 的书签花园
+      <span class="en">A growing collection of notes, tools, and rabbit holes</span>
+    </h1>
+    <p class="hero-lead">
+      你好，我是 <strong>Bender Wu</strong>。这里把散落各处的书签收成一座慢慢生长的数字花园——
+      按主题分畦、可检索、可深读。点击花圃进入分类，或直接在下方流里闲逛。
+    </p>
+    <div class="counts" id="heroCounts"></div>
+    <form class="search-shell" id="searchForm" role="search">
+      <input id="q" type="search" placeholder="搜索标题、域名、摘要或 URL…" autocomplete="off" />
+      <button type="submit">搜索</button>
+    </form>
+  </header>
+
+  <section class="section wrap" aria-labelledby="plots-title">
+    <div class="section-head">
+      <h2 id="plots-title">花园分畦</h2>
+      <p>一级分类 · 点击筛选</p>
+    </div>
+    <div class="plots" id="plots"></div>
+  </section>
+
+  <div class="browse-bar" id="browseBar">
+    <div class="wrap">
+      <div class="pills" id="cat1Pills" aria-label="一级分类"></div>
+      <div class="filters-row">
+        <div class="pills" id="cat2Pills" aria-label="二级分类"></div>
+        <select id="status" aria-label="抓取状态">
+          <option value="">全部状态</option>
+          <option value="ok">ok</option>
+          <option value="proxy_fallback">proxy_fallback</option>
+          <option value="error">error</option>
+          <option value="skip">skip</option>
+        </select>
+        <button class="pill" type="button" id="clearFilters">清除筛选</button>
+        <div class="result-meta" id="resultMeta"></div>
+      </div>
+    </div>
+  </div>
+
+  <section class="wrap stream" id="stream" aria-live="polite"></section>
+  <div class="wrap"><div class="sentinel" id="sentinel"></div></div>
+  <div class="wrap" style="text-align:center;padding-bottom:1rem">
+    <button class="load-more" id="loadMore" type="button" hidden>加载更多</button>
+  </div>
+  <footer class="footer wrap">书签花园 · site/ 预览版（正式部署目录仍为 public/）</footer>
+
+  <div class="scrim" id="scrim" hidden></div>
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <div style="min-width:0;flex:1">
+        <h3 id="drawerTitle">详情</h3>
+        <div class="drawer-actions" id="drawerLinks" style="margin-top:.55rem"></div>
+      </div>
+      <button class="icon-btn" id="closeDrawer" type="button" aria-label="关闭">✕</button>
+    </div>
+    <div class="drawer-body">
+      <div class="drawer-meta" id="drawerMeta"></div>
+      <article id="md-view"></article>
+    </div>
+  </aside>
+
+<script>
+(function () {
+  const PAGE_SIZE = 36;
+  let pages = [];
+  let hifiIds = new Set();
+  let activeId = null;
+  let cat1 = '';
+  let cat2 = '';
+  let rendered = 0;
+  let filteredCache = [];
+  let searchTimer = null;
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+
+  /* minimal markdown → HTML (no CDN) */
+  function mdToHtml(src) {
+    let text = String(src || '').replace(/\r\n/g, '\n');
+    const fences = [];
+    text = text.replace(/```([^\n`]*)\n([\s\S]*?)```/g, (_, lang, code) => {
+      const i = fences.length;
+      fences.push(`<pre><code class="lang-${esc(lang.trim())}">${esc(code.replace(/\n$/, ''))}</code></pre>`);
+      return `\u0000FENCE${i}\u0000`;
+    });
+    text = esc(text);
+    text = text.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    text = text.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
+    text = text.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
+    text = text.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+    text = text.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+    text = text.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+    text = text.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+    text = text.replace(/^\s*>\s?(.+)$/gm, '<blockquote>$1</blockquote>');
+    text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" />');
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/(^|[^*])\*([^*\n]+)\*(?![*])/g, '$1<em>$2</em>');
+    text = text.replace(/^(?:[-*+]\s+.+(?:\n|$))+?/gm, (block) => {
+      const items = block.trim().split(/\n/).map(l => l.replace(/^[-*+]\s+/, ''));
+      return '<ul>' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
+    });
+    text = text.replace(/^(?:\d+\.\s+.+(?:\n|$))+?/gm, (block) => {
+      const items = block.trim().split(/\n/).map(l => l.replace(/^\d+\.\s+/, ''));
+      return '<ol>' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
+    });
+    text = text.replace(/^(?!<(h\d|ul|ol|li|pre|blockquote|img|p|div)[\s>])((?:(?!<h\d|<ul|<ol|<pre|<blockquote).)+)$/gm, (m) => {
+      if (!m.trim()) return '';
+      return `<p>${m.trim()}</p>`;
+    });
+    text = text.replace(/\u0000FENCE(\d+)\u0000/g, (_, i) => fences[+i]);
+    return text;
+  }
+
+  function applyTheme(dark) {
+    document.documentElement.classList.toggle('dark', dark);
+    $('themeBtn').textContent = dark ? '☀ 浅色' : '☾ 深色';
+    try { localStorage.setItem('garden-theme', dark ? 'dark' : 'light'); } catch (_) {}
+  }
+
+  function initTheme() {
+    let dark = false;
+    try {
+      const saved = localStorage.getItem('garden-theme');
+      if (saved) dark = saved === 'dark';
+      else dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (_) {}
+    applyTheme(dark);
+  }
+
+  function statusCounts(list) {
+    const c = { ok: 0, proxy_fallback: 0, error: 0, skip: 0 };
+    list.forEach(p => { c[p.fetch_status] = (c[p.fetch_status] || 0) + 1; });
+    return c;
+  }
+
+  function cat1Stats() {
+    const map = new Map();
+    pages.forEach(p => {
+      const k = p.cat1 || '其他';
+      if (!map.has(k)) map.set(k, { name: k, count: 0, samples: [] });
+      const g = map.get(k);
+      g.count++;
+      if (g.samples.length < 3 && p.title) g.samples.push(p.title);
+    });
+    return [...map.values()].sort((a, b) => b.count - a.count);
+  }
+
+  function filtered() {
+    const q = $('q').value.trim().toLowerCase();
+    const st = $('status').value;
+    return pages.filter(p => {
+      if (cat1 && (p.cat1 || '其他') !== cat1) return false;
+      if (cat2 && p.cat2 !== cat2) return false;
+      if (st && p.fetch_status !== st) return false;
+      if (!q) return true;
+      const hay = [p.title, p.domain, p.url, p.summary, String(p.id), p.cat1, p.cat2].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  function renderHero() {
+    const c = statusCounts(pages);
+    const cats = new Set(pages.map(p => p.cat1).filter(Boolean)).size;
+    $('heroCounts').innerHTML = [
+      `<span class="count-chip">共 <b>${pages.length}</b> 条书签</span>`,
+      `<span class="count-chip"><b>${cats}</b> 个一级主题</span>`,
+      `<span class="count-chip">可读正文 <b>${(c.ok || 0) + (c.proxy_fallback || 0)}</b></span>`,
+      `<span class="count-chip">高保真 HTML <b>${hifiIds.size}</b></span>`,
+    ].join('');
+  }
+
+  function renderPlots() {
+    const stats = cat1Stats();
+    $('plots').innerHTML = stats.map(g => `
+      <button type="button" class="plot ${cat1 === g.name ? 'active' : ''}" data-cat1="${esc(g.name)}">
+        <div class="plot-top">
+          <div class="plot-name">${esc(g.name)}</div>
+          <span class="badge">${g.count}</span>
+        </div>
+        <ul class="plot-samples">
+          ${g.samples.map(t => `<li>${esc(t)}</li>`).join('')}
+        </ul>
+      </button>
+    `).join('');
+    $('plots').querySelectorAll('.plot').forEach(el => {
+      el.addEventListener('click', () => {
+        const v = el.dataset.cat1;
+        cat1 = cat1 === v ? '' : v;
+        cat2 = '';
+        refreshAll();
+        $('browseBar').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }
+
+  function renderPills() {
+    const c1map = new Map();
+    pages.forEach(p => {
+      const k = p.cat1 || '其他';
+      c1map.set(k, (c1map.get(k) || 0) + 1);
+    });
+    const c1s = [...c1map.entries()].sort((a, b) => b[1] - a[1]);
+    $('cat1Pills').innerHTML = [
+      `<button type="button" class="pill ${!cat1 ? 'active' : ''}" data-v="">全部<span class="n">${pages.length}</span></button>`,
+      ...c1s.map(([name, n]) =>
+        `<button type="button" class="pill ${cat1 === name ? 'active' : ''}" data-v="${esc(name)}">${esc(name)}<span class="n">${n}</span></button>`
+      )
+    ].join('');
+    $('cat1Pills').querySelectorAll('.pill').forEach(el => {
+      el.addEventListener('click', () => {
+        cat1 = el.dataset.v;
+        cat2 = '';
+        refreshAll();
+      });
+    });
+
+    const pool = cat1 ? pages.filter(p => (p.cat1 || '其他') === cat1) : pages;
+    const c2map = new Map();
+    pool.forEach(p => {
+      if (!p.cat2) return;
+      c2map.set(p.cat2, (c2map.get(p.cat2) || 0) + 1);
+    });
+    const c2s = [...c2map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 24);
+    $('cat2Pills').innerHTML = c2s.length
+      ? [
+          `<button type="button" class="pill ${!cat2 ? 'active' : ''}" data-v="">二级·全部</button>`,
+          ...c2s.map(([name, n]) =>
+            `<button type="button" class="pill ${cat2 === name ? 'active' : ''}" data-v="${esc(name)}">${esc(name)}<span class="n">${n}</span></button>`
+          )
+        ].join('')
+      : '';
+    $('cat2Pills').querySelectorAll('.pill').forEach(el => {
+      el.addEventListener('click', () => {
+        cat2 = el.dataset.v;
+        refreshStream(true);
+      });
+    });
+  }
+
+  function cardHtml(p) {
+    const title = esc(p.title || p.url || ('#' + p.id));
+    const sum = esc(p.summary || '暂无摘要');
+    return `
+      <article class="card ${p.id === activeId ? 'active' : ''}" data-id="${p.id}" tabindex="0" role="button">
+        <h3 class="card-title">${title}</h3>
+        <div class="card-meta">
+          <span class="tag">${esc(p.cat1 || '其他')}${p.cat2 ? ' · ' + esc(p.cat2) : ''}</span>
+          <span class="st ${esc(p.fetch_status)}">${esc(p.fetch_status || '?')}</span>
+          <span>${esc(p.domain || '')}</span>
+          <span>#${p.id}</span>
+          ${hifiIds.has(p.id) ? '<span class="tag">Hi-Fi</span>' : ''}
+        </div>
+        <p class="card-sum">${sum}</p>
+      </article>`;
+  }
+
+  function refreshStream(reset) {
+    filteredCache = filtered();
+    if (reset) {
+      rendered = 0;
+      $('stream').innerHTML = '';
+    }
+    $('resultMeta').textContent = `显示 ${Math.min(rendered, filteredCache.length)} / ${filteredCache.length}（库内 ${pages.length}）`;
+    appendMore();
+    renderPlotsActive();
+  }
+
+  function renderPlotsActive() {
+    $('plots').querySelectorAll('.plot').forEach(el => {
+      el.classList.toggle('active', el.dataset.cat1 === cat1);
+    });
+  }
+
+  function appendMore() {
+    const stream = $('stream');
+    if (!filteredCache.length && rendered === 0) {
+      stream.innerHTML = '<div class="empty">没有匹配的书签。试试换个关键词或清除筛选。</div>';
+      $('loadMore').hidden = true;
+      $('resultMeta').textContent = `显示 0 / 0（库内 ${pages.length}）`;
+      return;
+    }
+    const slice = filteredCache.slice(rendered, rendered + PAGE_SIZE);
+    if (!slice.length) {
+      $('loadMore').hidden = true;
+      return;
+    }
+    const html = slice.map(cardHtml).join('');
+    stream.insertAdjacentHTML('beforeend', html);
+    stream.querySelectorAll('.card[data-id]').forEach(el => {
+      if (el.dataset.bound) return;
+      el.dataset.bound = '1';
+      const open = () => openPage(+el.dataset.id);
+      el.addEventListener('click', open);
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+      });
+    });
+    rendered += slice.length;
+    $('resultMeta').textContent = `显示 ${rendered} / ${filteredCache.length}（库内 ${pages.length}）`;
+    $('loadMore').hidden = rendered >= filteredCache.length;
+  }
+
+  function refreshAll() {
+    renderPills();
+    refreshStream(true);
+  }
+
+  function closeDrawer() {
+    $('drawer').classList.remove('open');
+    $('drawer').setAttribute('aria-hidden', 'true');
+    $('scrim').classList.remove('on');
+    setTimeout(() => { $('scrim').hidden = true; }, 200);
+  }
+
+  function openDrawerShell() {
+    $('scrim').hidden = false;
+    requestAnimationFrame(() => {
+      $('scrim').classList.add('on');
+      $('drawer').classList.add('open');
+      $('drawer').setAttribute('aria-hidden', 'false');
+    });
+  }
+
+  function stripFrontMatter(text) {
+    const t = String(text || '').replace(/^\uFEFF/, '');
+    if (t.startsWith('---')) {
+      const end = t.indexOf('\n---', 3);
+      if (end !== -1) {
+        let rest = t.slice(end + 4);
+        if (rest.startsWith('\n')) rest = rest.slice(1);
+        return rest;
+      }
+    }
+    return t;
+  }
+
+  async function openPage(id) {
+    activeId = id;
+    document.querySelectorAll('.card.active').forEach(el => el.classList.remove('active'));
+    const card = document.querySelector(`.card[data-id="${id}"]`);
+    if (card) card.classList.add('active');
+
+    const p = pages.find(x => x.id === id);
+    if (!p) return;
+    openDrawerShell();
+    $('drawerTitle').textContent = p.title || p.url || ('#' + id);
+    const base = window.__contentBase || '';
+    const mdRel = p.md_path || (`content/${id}.md`);
+    const mdPath = base + mdRel;
+    const hasHifi = hifiIds.has(id);
+    const hifiHref = base ? `${base}hifi/${id}.html` : `hifi/${id}.html`;
+    const links = [
+      `<a class="mini" href="${esc(p.url)}" target="_blank" rel="noopener">原站 ↗</a>`,
+      `<a class="mini" href="${esc(mdPath)}" target="_blank" rel="noopener">打开 MD</a>`,
+    ];
+    if (hasHifi) links.push(`<a class="mini" href="${esc(hifiHref)}" target="_blank" rel="noopener">高保真 HTML</a>`);
+    $('drawerLinks').innerHTML = links.join('');
+    $('drawerMeta').innerHTML = `
+      <div class="url"><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url)}</a></div>
+      <div style="margin-top:.35rem">${esc(p.cat1 || '')} / ${esc(p.cat2 || '')} ·
+        <span class="st ${esc(p.fetch_status)}">${esc(p.fetch_status || '')}</span> ·
+        ${p.chars || 0} chars · #${p.id}
+        ${hasHifi ? ' · Hi-Fi 可用' : ''}
+      </div>
+      ${p.summary ? `<p style="margin:.7rem 0 0;color:var(--muted)">${esc(p.summary)}</p>` : ''}
+    `;
+    $('md-view').innerHTML = '<p style="color:var(--muted)">加载正文…</p>';
+    try {
+      const res = await fetch(mdPath);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const text = stripFrontMatter(await res.text());
+      $('md-view').innerHTML = mdToHtml(text);
+    } catch (e) {
+      $('md-view').innerHTML = `<div class="empty">无法加载正文：${esc(e.message)}<br/>可先看上方摘要，或打开原站 / MD 链接。</div>`;
+    }
+  }
+
+  async function load() {
+    initTheme();
+    async function fetchFirst(urls) {
+      for (const u of urls) {
+        try {
+          const r = await fetch(u);
+          if (r.ok) return r;
+        } catch (_) {}
+      }
+      return null;
+    }
+    const pagesRes = await fetchFirst([
+      'pages.json', 'data/pages.json',
+      '../public/pages.json', '../public/data/pages.json'
+    ]);
+    if (!pagesRes) throw new Error('pages.json not found');
+    pages = await pagesRes.json();
+    try {
+      const hr = await fetchFirst(['hifi-ids.json', '../public/hifi-ids.json']);
+      if (hr) hifiIds = new Set(await hr.json());
+    } catch (_) {}
+    let contentBase = '';
+    {
+      const local = await fetchFirst(['content/1.md']);
+      contentBase = local ? '' : '../public/';
+    }
+    window.__contentBase = contentBase;
+
+    // URL bootstrap: ?q=&cat1=&cat2=&status=&id=&dark=1
+    try {
+      const sp = new URLSearchParams(location.search);
+      if (sp.get('q')) $('q').value = sp.get('q');
+      if (sp.get('cat1')) cat1 = sp.get('cat1');
+      if (sp.get('cat2')) cat2 = sp.get('cat2');
+      if (sp.get('status')) $('status').value = sp.get('status');
+      if (sp.get('dark') === '1') applyTheme(true);
+    } catch (_) {}
+
+    renderHero();
+    renderPlots();
+    renderPills();
+    refreshStream(true);
+
+    try {
+      const sp = new URLSearchParams(location.search);
+      const oid = sp.get('id');
+      if (oid) setTimeout(() => openPage(+oid), 120);
+    } catch (_) {}
+
+    $('themeBtn').addEventListener('click', () => {
+      applyTheme(!document.documentElement.classList.contains('dark'));
+    });
+    $('searchForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      refreshStream(true);
+    });
+    $('q').addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => refreshStream(true), 180);
+    });
+    $('status').addEventListener('change', () => refreshStream(true));
+    $('clearFilters').addEventListener('click', () => {
+      cat1 = ''; cat2 = '';
+      $('q').value = '';
+      $('status').value = '';
+      refreshAll();
+    });
+    $('loadMore').addEventListener('click', appendMore);
+    $('closeDrawer').addEventListener('click', closeDrawer);
+    $('scrim').addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDrawer();
+    });
+    window.addEventListener('scroll', () => {
+      $('topbar').classList.toggle('scrolled', window.scrollY > 8);
+    }, { passive: true });
+
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some(en => en.isIntersecting)) appendMore();
+    }, { rootMargin: '600px 0px' });
+    io.observe($('sentinel'));
+  }
+
+  load().catch(e => {
+    $('stream').innerHTML = `<div class="empty">加载 pages.json 失败：${esc(e.message)}</div>`;
+  });
+})();
+</script>
+</body>
+</html>

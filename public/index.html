@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bookmark Knowledge Base — Chunk 1 游戏开发</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #1a2332;
+    --panel2: #243044;
+    --text: #e7ecf3;
+    --muted: #9aa8bc;
+    --accent: #5b9fd4;
+    --ok: #3dba7a;
+    --proxy: #d4a017;
+    --err: #e35d6a;
+    --skip: #7a8494;
+    --border: #2c3a4f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Noto Sans SC", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.45;
+  }
+  header {
+    padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #152033, var(--bg));
+    position: sticky; top: 0; z-index: 10;
+  }
+  h1 { margin: 0 0 .35rem; font-size: 1.25rem; font-weight: 650; }
+  .sub { color: var(--muted); font-size: .9rem; }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .85rem; align-items: center;
+  }
+  input, select {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: .5rem .7rem; font-size: .92rem;
+  }
+  input[type=search] { min-width: 220px; flex: 1; }
+  .stats { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.7rem; }
+  .chip {
+    font-size: .78rem; padding: .2rem .55rem; border-radius: 999px;
+    background: var(--panel2); color: var(--muted); border: 1px solid var(--border);
+  }
+  .chip b { color: var(--text); font-weight: 600; }
+  main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; min-height: calc(100vh - 130px); }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } .viewer { min-height: 50vh; } }
+  .list { border-right: 1px solid var(--border); overflow: auto; max-height: calc(100vh - 130px); }
+  .item {
+    padding: .75rem 1rem; border-bottom: 1px solid var(--border); cursor: pointer;
+  }
+  .item:hover, .item.active { background: var(--panel); }
+  .item .t { font-weight: 600; font-size: .95rem; margin-bottom: .2rem; }
+  .item .m { color: var(--muted); font-size: .78rem; display:flex; flex-wrap:wrap; gap:.4rem; }
+  .badge {
+    display:inline-block; padding: .05rem .4rem; border-radius: 6px; font-size: .72rem; font-weight: 600;
+  }
+  .ok { background: rgba(61,186,122,.15); color: var(--ok); }
+  .proxy_fallback { background: rgba(212,160,23,.15); color: var(--proxy); }
+  .error { background: rgba(227,93,106,.15); color: var(--err); }
+  .skip { background: rgba(122,132,148,.15); color: var(--skip); }
+  .viewer { padding: 1rem 1.25rem; overflow: auto; max-height: calc(100vh - 130px); background: #121a24; }
+  .viewer .meta { color: var(--muted); font-size: .85rem; margin-bottom: 1rem; }
+  .viewer a { color: var(--accent); }
+  #md { max-width: 52rem; }
+  #md h1,#md h2,#md h3 { line-height: 1.25; }
+  #md pre { background: var(--panel); padding: .8rem; overflow:auto; border-radius: 8px; }
+  #md code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .88em; }
+  #md p { margin: .6rem 0; }
+  .empty { color: var(--muted); padding: 2rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bookmark Knowledge Base</h1>
+  <div class="sub">全书签知识库（全部分类）· 本地可筛选浏览（MD + SQLite）</div>
+  <div class="controls">
+    <input id="q" type="search" placeholder="搜索标题 / 域名 / 摘要 / URL…" />
+    <select id="cat1"><option value="">全部一级分类</option></select>
+    <select id="cat2"><option value="">全部二级分类</option></select>
+    <select id="status">
+      <option value="">全部状态</option>
+      <option value="ok">ok</option>
+      <option value="proxy_fallback">proxy_fallback</option>
+      <option value="error">error</option>
+      <option value="skip">skip</option>
+    </select>
+  </div>
+  <div class="stats" id="stats"></div>
+</header>
+<main>
+  <section class="list" id="list"></section>
+  <section class="viewer" id="viewer">
+    <div class="empty">选择左侧条目查看正文。也可直接打开 <code>content/{id}.md</code>。</div>
+  </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+let pages = [];
+let activeId = null;
+
+async function load() {
+  let res = await fetch('data/pages.json');
+  if (!res.ok) res = await fetch('pages.json');
+  pages = await res.json();
+  const cat1s = [...new Set(pages.map(p => p.cat1).filter(Boolean))].sort();
+  const cat2s = [...new Set(pages.map(p => p.cat2).filter(Boolean))].sort();
+  const s1 = document.getElementById('cat1');
+  const s2 = document.getElementById('cat2');
+  cat1s.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=c; s1.appendChild(o); });
+  cat2s.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=c; s2.appendChild(o); });
+  ['q','cat1','cat2','status'].forEach(id => document.getElementById(id).addEventListener('input', render));
+  render();
+}
+
+function filtered() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const c1 = document.getElementById('cat1').value;
+  const c2 = document.getElementById('cat2').value;
+  const st = document.getElementById('status').value;
+  return pages.filter(p => {
+    if (c1 && p.cat1 !== c1) return false;
+    if (c2 && p.cat2 !== c2) return false;
+    if (st && p.fetch_status !== st) return false;
+    if (!q) return true;
+    const hay = [p.title, p.domain, p.url, p.summary, String(p.id)].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+}
+
+function render() {
+  const rows = filtered();
+  const counts = { ok:0, proxy_fallback:0, error:0, skip:0 };
+  pages.forEach(p => { counts[p.fetch_status] = (counts[p.fetch_status]||0)+1; });
+  document.getElementById('stats').innerHTML = [
+    chip('显示', rows.length + ' / ' + pages.length),
+    chip('ok', counts.ok||0),
+    chip('proxy', counts.proxy_fallback||0),
+    chip('error', counts.error||0),
+    chip('skip', counts.skip||0),
+  ].join('');
+  const list = document.getElementById('list');
+  list.innerHTML = rows.map(p => `
+    <div class="item ${p.id===activeId?'active':''}" data-id="${p.id}">
+      <div class="t">${esc(p.title || p.url)}</div>
+      <div class="m">
+        <span class="badge ${esc(p.fetch_status)}">${esc(p.fetch_status)}</span>
+        <span>#${p.id}</span>
+        <span>${esc(p.domain||'')}</span>
+        <span>${p.chars||0} chars</span>
+      </div>
+    </div>
+  `).join('') || '<div class="empty">无匹配结果</div>';
+  list.querySelectorAll('.item').forEach(el => {
+    el.addEventListener('click', () => openPage(+el.dataset.id));
+  });
+}
+
+function chip(k,v){ return `<span class="chip">${k}: <b>${v}</b></span>`; }
+function esc(s){ return String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function openPage(id) {
+  activeId = id;
+  render();
+  const p = pages.find(x => x.id === id);
+  const viewer = document.getElementById('viewer');
+  if (!p) return;
+  viewer.innerHTML = `<div class="empty">加载 content/${id}.md …</div>`;
+  try {
+    const mdPath = p.md_path || (`content/${id}.md`);
+    const res = await fetch(mdPath);
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    const text = await res.text();
+    const html = (window.marked ? marked.parse(text) : '<pre>'+esc(text)+'</pre>');
+    viewer.innerHTML = `
+      <div class="meta">
+        <div><b>${esc(p.title||'')}</b></div>
+        <div><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url)}</a></div>
+        <div>${esc(p.cat1)} / ${esc(p.cat2)} · ${esc(p.fetch_status)} · ${p.chars||0} chars ·
+          <a href="${esc(mdPath)}" target="_blank">打开 MD</a></div>
+      </div>
+      <article id="md">${html}</article>`;
+  } catch (e) {
+    viewer.innerHTML = `<div class="empty">无法加载正文：${esc(e.message)}<br/>摘要：${esc(p.summary||'')}</div>`;
+  }
+}
+
+load().catch(e => {
+  document.getElementById('list').innerHTML = `<div class="empty">加载 data/pages.json 失败：${esc(e.message)}</div>`;
+});
+</script>
+</body>
+</html>

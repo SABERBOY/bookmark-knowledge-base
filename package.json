@@ -1,0 +1,10 @@
+{
+  "name": "bookmark-knowledge-base",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.158.0"
+  }
+}
